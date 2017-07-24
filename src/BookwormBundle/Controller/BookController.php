@@ -5,7 +5,10 @@ namespace BookwormBundle\Controller;
 use BookwormBundle\Entity\Book;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;use Symfony\Component\HttpFoundation\Request;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Serializer\Serializer;
 
 /**
  * Book controller.
@@ -17,44 +20,57 @@ class BookController extends Controller
     /**
      * Lists all book entities.
      *
-     * @Route("/", name="api_book_index")
+     * @Route("", name="api_book_index")
      * @Method("GET")
      */
     public function indexAction()
     {
+        $serializer = $this->get('serializer');
+
         $em = $this->getDoctrine()->getManager();
 
         $books = $em->getRepository('BookwormBundle:Book')->findAll();
 
-        return $this->render('book/index.html.twig', array(
-            'books' => $books,
-        ));
+        return new JsonResponse([
+            'books' => json_decode($serializer->serialize($books, 'json'), true),
+        ], 200);
     }
 
     /**
      * Creates a new book entity.
      *
-     * @Route("/new", name="api_book_new")
-     * @Method({"GET", "POST"})
+     * @Route("", name="api_book_new")
+     * @Method({"POST"})
+     * @param Request $request
+     *
+     * @return JsonResponse
      */
     public function newAction(Request $request)
     {
-        $book = new Book();
-        $form = $this->createForm('BookwormBundle\Form\BookType', $book);
-        $form->handleRequest($request);
+        $request = json_decode($request->getContent(), true);
+        $request['releaseDate'] = new \DateTime($request['releaseDate']);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($book);
-            $em->flush();
+        $em   = $this->getDoctrine()->getManager();
+        $book = $em->getRepository('BookwormBundle:Book')->findOneByIsbn($request['isbn']);
 
-            return $this->redirectToRoute('api_book_show', array('id' => $book->getId()));
+        if (null !== $book) {
+            return new JsonResponse([
+                'error' => get_class($book) . ' with this isbn already exists',
+            ], 409);
         }
 
-        return $this->render('book/new.html.twig', array(
-            'book' => $book,
-            'form' => $form->createView(),
-        ));
+        $book = new Book();
+        $book->setReleaseDate($request['releaseDate']);
+        $form = $this->createForm('BookwormBundle\Form\BookType', $book);
+        $form->submit($request);
+
+        $em->persist($book);
+        $em->flush();
+
+        return new JsonResponse([
+            'book' => $request,
+        ], 201);
+
     }
 
     /**
@@ -62,40 +78,40 @@ class BookController extends Controller
      *
      * @Route("/{id}", name="api_book_show")
      * @Method("GET")
+     * @param Book $book
+     *
+     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function showAction(Book $book)
     {
-        $deleteForm = $this->createDeleteForm($book);
+        $serializer = $this->get('serializer');
 
-        return $this->render('book/show.html.twig', array(
-            'book' => $book,
-            'delete_form' => $deleteForm->createView(),
-        ));
+        return new JsonResponse([
+            'author' => json_decode($serializer->serialize($book, 'json'), true),
+        ], 200);
     }
 
     /**
      * Displays a form to edit an existing book entity.
      *
-     * @Route("/{id}/edit", name="api_book_edit")
-     * @Method({"GET", "POST"})
+     * @Route("/{id}", name="api_book_edit")
+     * @Method({"PUT"})
+     * @param Request $request
+     * @param Book $book
+     *
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
      */
     public function editAction(Request $request, Book $book)
     {
-        $deleteForm = $this->createDeleteForm($book);
         $editForm = $this->createForm('BookwormBundle\Form\BookType', $book);
-        $editForm->handleRequest($request);
+        $request  = json_decode($request->getContent(), true);
+        $editForm->submit($request);
 
-        if ($editForm->isSubmitted() && $editForm->isValid()) {
-            $this->getDoctrine()->getManager()->flush();
+        $this->getDoctrine()->getManager()->flush();
 
-            return $this->redirectToRoute('api_book_edit', array('id' => $book->getId()));
-        }
-
-        return $this->render('book/edit.html.twig', array(
-            'book' => $book,
-            'edit_form' => $editForm->createView(),
-            'delete_form' => $deleteForm->createView(),
-        ));
+        return new JsonResponse([
+            'book' => $request,
+        ], 200);
     }
 
     /**
@@ -103,19 +119,25 @@ class BookController extends Controller
      *
      * @Route("/{id}", name="api_book_delete")
      * @Method("DELETE")
+     * @param Request $request
+     * @param Book $book
+     *
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
      */
     public function deleteAction(Request $request, Book $book)
     {
-        $form = $this->createDeleteForm($book);
-        $form->handleRequest($request);
+        $deleteForm = $this->createDeleteForm($book);
+        $request    = json_decode($request->getContent(), true);
+        $deleteForm->submit($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->remove($book);
-            $em->flush();
-        }
+        $em = $this->getDoctrine()->getManager();
+        $em->remove($book);
+        $em->flush();
 
-        return $this->redirectToRoute('api_book_index');
+        return new JsonResponse([
+            'deleted'
+        ], 200);
+
     }
 
     /**
@@ -128,9 +150,8 @@ class BookController extends Controller
     private function createDeleteForm(Book $book)
     {
         return $this->createFormBuilder()
-            ->setAction($this->generateUrl('api_book_delete', array('id' => $book->getId())))
-            ->setMethod('DELETE')
-            ->getForm()
-        ;
+                    ->setAction($this->generateUrl('api_book_delete', ['id' => $book->getId()]))
+                    ->setMethod('DELETE')
+                    ->getForm();
     }
 }

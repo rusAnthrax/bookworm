@@ -60,7 +60,7 @@ class AuthorController extends Controller
 
         $author = new Author();
         $form   = $this->createForm('BookwormBundle\Form\AuthorType', $author);
-        $form->submit($request);
+        $form->handleRequest($request);
 
         $em->persist($author);
         $em->flush();
