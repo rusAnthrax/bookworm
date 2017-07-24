@@ -2,6 +2,7 @@
 
 namespace BookwormBundle\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -45,6 +46,15 @@ class Author
      */
     private $email;
 
+    /**
+     * @ORM\OneToMany(targetEntity="Book", mappedBy="author")
+     */
+    private $books;
+
+    public function __construct()
+    {
+        $this->books = new ArrayCollection();
+    }
 
     /**
      * Get id
@@ -123,5 +133,10 @@ class Author
     public function getEmail()
     {
         return $this->email;
+    }
+
+    public function getBooks()
+    {
+//        return $this->books;
     }
 }

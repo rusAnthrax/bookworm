@@ -42,6 +42,11 @@ class Book
      */
     private $releaseDate;
 
+    /**
+     * @ORM\ManyToOne(targetEntity="Author", inversedBy="books")
+     * @ORM\JoinColumn(name="author_id", referencedColumnName="id")
+     */
+    private $author;
 
     /**
      * Get id
@@ -120,5 +125,15 @@ class Book
     public function getReleaseDate()
     {
         return $this->releaseDate;
+    }
+
+    /**
+     * Fetch book author
+     *
+     * @return mixed
+     */
+    public function getAuthor()
+    {
+//        return $this->author;
     }
 }
