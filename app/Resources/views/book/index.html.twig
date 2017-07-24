@@ -1,0 +1,43 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Books list</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Title</th>
+                <th>Isbn</th>
+                <th>Releasedate</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for book in books %}
+            <tr>
+                <td><a href="{{ path('api_book_show', { 'id': book.id }) }}">{{ book.id }}</a></td>
+                <td>{{ book.title }}</td>
+                <td>{{ book.isbn }}</td>
+                <td>{% if book.releaseDate %}{{ book.releaseDate|date('Y-m-d') }}{% endif %}</td>
+                <td>
+                    <ul>
+                        <li>
+                            <a href="{{ path('api_book_show', { 'id': book.id }) }}">show</a>
+                        </li>
+                        <li>
+                            <a href="{{ path('api_book_edit', { 'id': book.id }) }}">edit</a>
+                        </li>
+                    </ul>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <ul>
+        <li>
+            <a href="{{ path('api_book_new') }}">Create a new book</a>
+        </li>
+    </ul>
+{% endblock %}

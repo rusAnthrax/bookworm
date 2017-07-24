@@ -1,0 +1,4 @@
+bookworm:
+    resource: "@BookwormBundle/Controller/"
+    type:     annotation
+    prefix:   /
