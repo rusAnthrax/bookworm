@@ -47,18 +47,27 @@ class AuthorController extends Controller
      */
     public function newAction(Request $request)
     {
-        $author = new Author();
-        $form   = $this->createForm('BookwormBundle\Form\AuthorType', $author);
         $request = json_decode($request->getContent(), true);
-        $form->bind($request);
 
         $em = $this->getDoctrine()->getManager();
+        $author = $em->getRepository('BookwormBundle:Author')->findOneByEmail($request['email']);
+
+        if (null !== $author) {
+            return new JsonResponse([
+                'error' => get_class($author) . ' with this email already exists',
+            ], 409);
+        }
+
+        $author = new Author();
+        $form   = $this->createForm('BookwormBundle\Form\AuthorType', $author);
+        $form->submit($request);
+
         $em->persist($author);
         $em->flush();
 
         return new JsonResponse([
             'author' => $request,
-        ], 200);
+        ], 201);
     }
 
     /**
@@ -93,7 +102,7 @@ class AuthorController extends Controller
     {
         $editForm   = $this->createForm('BookwormBundle\Form\AuthorType', $author);
         $request = json_decode($request->getContent(), true);
-        $editForm->bind($request);
+        $editForm->submit($request);
 
         $this->getDoctrine()->getManager()->flush();
 
@@ -131,12 +140,14 @@ class AuthorController extends Controller
     {
         $deleteForm = $this->createDeleteForm($author);
         $request = json_decode($request->getContent(), true);
-        $deleteForm->bind($request);
+        $deleteForm->submit($request);
 
         $em = $this->getDoctrine()->getManager();
         $em->remove($author);
         $em->flush();
 
-        return new JsonResponse(['deleted'], 200);
+        return new JsonResponse([
+            'deleted'
+        ], 200);
     }
 }

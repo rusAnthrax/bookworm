@@ -2,7 +2,9 @@
 
 namespace BookwormBundle\Entity;
 
+use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 /**
  * Author
@@ -38,7 +40,8 @@ class Author
     /**
      * @var string
      *
-     * @ORM\Column(name="email", type="string", length=128)
+     * @ORM\Column(name="email", type="string", length=128, unique=true)
+     * @Assert\Email()
      */
     private $email;
 
